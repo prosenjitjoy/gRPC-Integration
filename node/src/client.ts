@@ -3,6 +3,7 @@ import * as protoLoader from "@grpc/proto-loader"
 import { ProtoGrpcType } from "./rpc/greet"
 import { GreetServiceClient } from "./rpc/greet_service/GreetService"
 import { NameList } from "./rpc/greet_service/NameList"
+import { HelloRequest } from "./rpc/greet_service/HelloRequest"
 
 
 const packageDef = protoLoader.loadSync("src/proto/greet.proto")
@@ -18,14 +19,16 @@ function main() {
 
   const deadline = new Date()
   deadline.setSeconds(deadline.getSeconds() + 5)
-  client.waitForReady(deadline, (err) => {
+  client.waitForReady(deadline, function (err) {
     if (err) {
-      console.error(err)
+      console.error(err.message)
       return
     }
 
-    callSayHello(client)
-    callSayHelloServerStream(client, names)
+    // callSayHello(client)
+    // callSayHelloServerStream(client, names)
+    // callSayHelloClientStreaming(client, names)
+    callSayHelloBidirectionalStreaming(client, names)
   })
 }
 
@@ -45,8 +48,8 @@ function callSayHelloServerStream(client: GreetServiceClient, names: NameList) {
   console.log("Streaming started")
 
   const stream = client.SayHelloServerStreaming(names)
-  stream.on("error", function () {
-    console.log("error while streaming")
+  stream.on("error", function (err) {
+    console.error("error while streaming:", err.message)
   })
   stream.on("data", function (chunk) {
     console.log(chunk.message)
@@ -56,27 +59,47 @@ function callSayHelloServerStream(client: GreetServiceClient, names: NameList) {
   })
 }
 
+function callSayHelloClientStreaming(client: GreetServiceClient, names: NameList) {
+  console.log("Client streaming started")
 
-// const stream = client.RandomNumber({ maxVal: 100 })
-// stream.on("data", (chunk) => {
-//   console.log(chunk)
-// })
-// stream.on("end", () => {
-//   console.log("communication ended")
-// })
+  const stream = client.SayHelloClientStreaming(function (err, res) {
+    if (err) {
+      console.error("error while sending:", err.message)
+      return
+    }
+    if (res) {
+      console.log("Client streaming finished")
+      console.log(res)
+    }
+  })
 
-// const stream = client.TodoList((err, result) => {
-//   if (err) {
-//     console.error(err)
-//     return
-//   }
-//   console.log(result)
-// })
+  for (const aname of names.names as string[]) {
+    stream.write({ name: aname }, function () {
+      console.log("Send request with name:", aname)
+    })
+  }
 
-// stream.write({ todo: "walk the wife", status: "never" })
-// stream.write({ todo: "walk the dog", status: "pending" })
-// stream.write({ todo: "get a real job", status: "impossible" })
-// stream.write({ todo: "feed the dog", status: "done" })
-// stream.end()
+  stream.end()
+}
+
+function callSayHelloBidirectionalStreaming(client: GreetServiceClient, names: NameList) {
+  console.log("Bidirectional streaming started")
+
+  const stream = client.SayHelloBidirectionalStreaming()
+  stream.on("error", function (err) {
+    console.error("error while streaming:", err.message)
+  })
+  stream.on("data", function (chunk) {
+    console.log(chunk.message)
+  })
+  stream.on("end", function () {
+    console.log("Streaming finished")
+  })
+
+  for (const aname of names.names as string[]) {
+    stream.write({ name: aname })
+  }
+  stream.end()
+}
 
 main()
