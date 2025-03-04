@@ -7,7 +7,7 @@ import (
 	"main/proto"
 )
 
-func callSayHelloServerStream(client proto.GreetServiceClient, names *proto.NameList) {
+func callSayHelloServerStreaming(client proto.GreetServiceClient, names *proto.NameList) {
 	log.Println("Streaming started")
 
 	stream, err := client.SayHelloServerStreaming(context.Background(), names)
