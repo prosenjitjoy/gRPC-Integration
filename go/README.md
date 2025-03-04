@@ -1,5 +1,5 @@
 # gRPC Server
 Primary server in Go.
 ```
-make
+make grpc-server
 ```
